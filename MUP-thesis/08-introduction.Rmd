@@ -1,5 +1,0 @@
-# Introduction
-
-## Test
-
-This is a test introduction written with Bookdown.
