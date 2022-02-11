@@ -1,0 +1,128 @@
+---
+title: "Manual-data-assembly"
+author: "Chris Dsida"
+date: "10/5/2021"
+output: html_document
+---
+
+```{r}
+library(sf)
+library(tidycensus)
+library(ggplot2)
+library(geojsonsf)
+library(sp)
+library(raster)
+```
+
+```{r}
+nctd_sprinter_data <- read.csv("C:/Users/chris/Documents/MUP-thesis/transit_data/csv/northcountytransitdistrict.csv")
+
+osm_proj <- "+proj=longlat +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext  +no_defs"
+
+nctd_sprinter_sf <- st_as_sf(nctd_sprinter_data, coords = c("long", "lat"), crs = osm_proj)
+
+# service_area <- geojson_sf("https://opendata.arcgis.com/datasets/c4c9eca71e3e4c11a405b34a7dd1a2a5_538.geojson")
+```
+
+```{r}
+dec_00_data <- get_decennial(geography = "block group", variables = "H001001", year = 2000, state = "CA", county = "San Diego", geometry = TRUE)
+
+dec_10_data <- get_decennial(geography = "block group", variables = "H001001", year = 2010, state = "CA", county = "San Diego", geometry = TRUE)
+
+acs_after_data <- get_acs(geography = "block group", state = "CA", year = 2015, survey = "acs5", county = "San Diego", variables = "B25001_001", geometry = TRUE)
+
+# acs_vars <- load_variables(2013, "acs5")
+
+# dec_vars <- load_variables(2010, "sf1")
+
+# dec00_data <- get_decennial(geography = "block", variables = "H001001", year = 2000, state = "WA", county = "King", geometry = TRUE)
+```
+
+```{r}
+# acs_data %>%
+#  ggplot(aes(fill = value)) + 
+#  geom_sf(color = NA) + 
+#  coord_sf(crs = 26911) + 
+#  scale_fill_viridis_c(option = "magma") 
+```
+
+```{r}
+station_buffer <- st_buffer(nctd_sprinter_sf, 3218.68)
+
+acs_after_data <- st_transform(acs_after_data, osm_proj)
+
+acs_after_data$area <- st_area(acs_after_data)
+
+acs_after_data$density <- (acs_after_data$estimate/acs_after_data$area)
+
+
+
+dec_00_data <- st_transform(dec_00_data, osm_proj)
+
+dec_00_data$area <- st_area(dec_00_data)
+
+dec_00_data$density <- (dec_00_data$value/dec_00_data$area)
+
+
+
+dec_10_data <- st_transform(dec_10_data, osm_proj)
+
+dec_10_data$area <- st_area(dec_10_data)
+
+dec_10_data$density <- (dec_10_data$value/dec_10_data$area)
+
+
+
+buffer_acs_after <- acs_after_data[station_buffer, op = st_intersects]
+
+buffer_dec_00 <- dec_00_data[station_buffer, op = st_intersects]
+
+buffer_dec_10 <- dec_10_data[station_buffer, op = st_intersects]
+
+# service_tracts_sf <- dec00_data[service_tracts[[1]],]
+
+# station_tracts <- st_intersects(station_buffer, service_tracts_sf)
+
+# station_tracts_sf <- service_tracts_sf[station_buffer, op = st_intersects]
+```
+
+```{r}
+ggplot() +
+  geom_sf(data = buffer_acs_after)
+
+ggplot() +
+  geom_sf(data = buffer_dec_00)
+
+ggplot() +
+  geom_sf(data = buffer_dec_10)
+```
+
+```{r}
+clipped_acs_after <- st_intersection(buffer_acs_after, station_buffer)
+
+acs_after_centroid <- st_centroid(buffer_acs_after)
+
+# buffer_acs_after$centroid <- st_centroid(buffer_acs_after)
+
+# station_tracts_centroid <- st_centroid(station_tracts_sf)
+
+ ggplot() +
+  geom_sf(data = clipped_acs_after)
+ 
+clipped_acs_after$area2 <- st_area(clipped_acs_after)
+
+clipped_acs_after$adj_unit <- as.integer(clipped_acs_after$area2*clipped_acs_after$density)
+
+#ggplot() +
+#  geom_sf(data = service_tracts_sf) +
+#  geom_sf(data = station_buffer) +
+#  geom_sf(data = central_link_sf) 
+```
+
+```{r}
+# short_walk_buf <- st_buffer(central_link_sf, 1609/4)
+
+# short_walk_centroids <- st_intersects(station_buffer, station_tracts_centroid)
+
+# station_tracts_sf <- station_tracts_centroid[short_walk_buf, op = st_intersects]
+```
